@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
+using Photon.Pun;
 
 public class UIManager : MonoBehaviour
 {
@@ -40,6 +41,13 @@ public class UIManager : MonoBehaviour
     [Space]
     [Header("Multiplayer creating room")]
     [Space]
+    [SerializeField] GameObject PlayerNameParent;
+    [SerializeField] TMP_InputField PlayerNameInput;
+    [SerializeField] Image PlayerNameInputParentImg;
+    [SerializeField] Color PlayerNameInputParentImgNormalColor;
+    [SerializeField] Color PlayerNameInputParentImgAlertColor;
+    [Space]
+    [Space]
     [SerializeField] TMP_Text RoomId;
     [SerializeField] Button CreateRoomBtn;
     [SerializeField] Button JoinRoomBtn;
@@ -50,10 +58,18 @@ public class UIManager : MonoBehaviour
     [Header("Multiplayer joining room")]
     [Space]
     [SerializeField] GameObject JoinRoomParent;
+    [SerializeField] GameObject CreateRoomParent;
     [SerializeField] TMP_InputField JoinToRoomRoomIdInput;
     [SerializeField] Button JoinToRoomBtn;
     [SerializeField] Button JoinToRoomCancelBtn;
     [SerializeField] GameObject JoinToRoomConnectingToServerText;
+    [Space]
+    [Space]
+    [Space]
+    [Header("Multiplayer joined room")]
+    [Space]
+    [SerializeField] GameObject JoinedRoomParent;
+    [SerializeField] TMP_Text JoinedRoomPlayerName;
     [Space]
     [Header("attachments")]
     [Space]
@@ -63,7 +79,7 @@ public class UIManager : MonoBehaviour
     {
         Instance = this;
         NetworkManager.ConnectedToServer.AddListener(EnableRoomCreation);
-        NetworkManager.ConnectedToRoom.AddListener(JoinedToRoom);
+        NetworkManager.ConnectedToRoom.AddListener(ConnectedToRoom);
     }
 
     public void ShowStartMenu()
@@ -214,7 +230,35 @@ public class UIManager : MonoBehaviour
 
     public void CreateRoom()
     {
-        NetworkManager.CreateRoom();
+        if (PlayerNameInput.text != "" && PlayerNameInput.text != null)
+        {
+            PhotonNetwork.NickName = PlayerNameInput.text;
+            NetworkManager.CreateRoom();
+            PlayerNameParent.SetActive(false);
+            CreateRoomParent.SetActive(true);
+        }
+        else
+        {
+            Sequence mySequence = DOTween.Sequence();
+            mySequence.Append(PlayerNameInputParentImg.DOColor(PlayerNameInputParentImgAlertColor, 0.5f));
+            mySequence.Append(PlayerNameInputParentImg.DOColor(PlayerNameInputParentImgNormalColor, 0.5f));
+        }
+    }
+
+    public void JoinRoomNameCheck()
+    {
+        if (PlayerNameInput.text != "" && PlayerNameInput.text != null)
+        {
+            PhotonNetwork.NickName = PlayerNameInput.text;
+            PlayerNameParent.SetActive(false);
+            JoinRoomParent.SetActive(true);
+        }
+        else
+        {
+            Sequence mySequence = DOTween.Sequence();
+            mySequence.Append(PlayerNameInputParentImg.DOColor(PlayerNameInputParentImgAlertColor, 0.5f));
+            mySequence.Append(PlayerNameInputParentImg.DOColor(PlayerNameInputParentImgNormalColor, 0.5f));
+        }
     }
 
     public void JoinRoom()
@@ -232,14 +276,20 @@ public class UIManager : MonoBehaviour
         ConnectingToServerText.SetActive(false);
     }
 
-    void JoinedToRoom()
+    void ConnectedToRoom(bool isownroom, string otherplayername)
     {
+        if (!isownroom)
+        {
+            CreateRoomParent.SetActive(false);
+            JoinedRoomPlayerName.text = otherplayername;
+            JoinedRoomParent.SetActive(true);
+        }
         JoinRoomParent.SetActive(false);
     }
 
     void OnDestroy()
     {
         NetworkManager.ConnectedToServer.RemoveListener(EnableRoomCreation);
-        NetworkManager.ConnectedToRoom.RemoveListener(JoinedToRoom);
+        NetworkManager.ConnectedToRoom.RemoveListener(ConnectedToRoom);
     }
 }

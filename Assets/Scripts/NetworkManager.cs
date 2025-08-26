@@ -2,7 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
+using Photon.Realtime;
 using UnityEngine.Events;
+using System.Runtime.CompilerServices;
 
 public class NetworkManager : MonoBehaviourPunCallbacks
 {
@@ -11,7 +13,9 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     public static string PlayerRoomName;
 
     public static UnityEvent ConnectedToServer = new UnityEvent();
-    public static UnityEvent ConnectedToRoom = new UnityEvent();
+    public static UnityEvent<bool, string> ConnectedToRoom = new UnityEvent<bool, string>();
+
+    [SerializeField] PhotonView View;
 
     // Start is called before the first frame update
     void Start()
@@ -32,9 +36,39 @@ public class NetworkManager : MonoBehaviourPunCallbacks
         UIManager.Instance.UpdateRoomId(PlayerRoomName);
     }
 
+    public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
+    {
+        //if we are master client then we should disable our own ui
+        if (PhotonNetwork.IsMasterClient)
+        {
+            ConnectedToRoom?.Invoke(false, newPlayer.NickName);
+        }
+        else
+        {
+            ConnectedToRoom?.Invoke(true, newPlayer.NickName);
+        }
+        print("OnPlayerEnteredRoom " + PhotonNetwork.IsMasterClient);
+    }
+
     public override void OnJoinedRoom()
     {
-        ConnectedToRoom?.Invoke();
+        if (PhotonNetwork.IsMasterClient)
+        {
+            ConnectedToRoom?.Invoke(true, "owner");
+        }
+        else
+        {
+            string otherPlayerName = "abc";
+            foreach (Player player in PhotonNetwork.PlayerList)
+            {
+                if (player != PhotonNetwork.LocalPlayer)
+                {
+                    otherPlayerName = player.NickName;
+                }
+            }
+            ConnectedToRoom?.Invoke(false, otherPlayerName);
+        }
+        print("OnJoinedRoom");
     }
 
     public static void CreateRoom()
@@ -52,9 +86,4 @@ public class NetworkManager : MonoBehaviourPunCallbacks
         return "RPS" + Random.Range(12345, 98765);
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
 }
